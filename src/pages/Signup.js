@@ -40,6 +40,7 @@ function Signup() {
       const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
         nickname,
+        email,
       })
       if (profileError) throw profileError
 

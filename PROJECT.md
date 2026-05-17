@@ -36,7 +36,7 @@ src/
 
 ## Supabase
 - .env 파일에 키 저장 (gitignore 처리됨)
-
+- URL: https://ubkyfmtybbxjfihkpeyy.supabase.co
 ## 데이터베이스 테이블
 
 ### quizzes
