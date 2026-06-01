@@ -1,13 +1,42 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { supabase } from '../supabase'
 
 function AdminLayout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        navigate('/login')
+        return
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (!userData || userData.role !== 'admin') {
+        navigate('/')
+        return
+      }
+
+      setChecking(false)
+    }
+    checkAdmin()
+  }, [navigate])
 
   const menuItems = [
     { label: '퀴즈 관리', path: '/admin/quizzes' },
     { label: '회원 관리', path: '/admin/users' },
   ]
+
+  if (checking) return <p style={{ padding: '40px' }}>확인 중...</p>
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>

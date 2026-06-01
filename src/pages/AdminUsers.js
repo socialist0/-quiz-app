@@ -14,11 +14,26 @@ function AdminUsers() {
 
   async function fetchUsers() {
     setLoading(true)
-    const { data, error } = await supabase
+
+    const { data: userData, error } = await supabase
       .from('users')
       .select('*')
       .order('created_at', { ascending: false })
-    if (!error) setUsers(data)
+    if (error) { setLoading(false); return }
+
+    // 배팅 내역 전체 가져오기
+    const { data: betData } = await supabase
+      .from('bets')
+      .select('user_id, is_correct')
+
+    // 유저별 참여 수 / 정답 수 계산
+    const usersWithStats = userData.map(u => {
+      const userBets = betData?.filter(b => b.user_id === u.id) || []
+      const correctCount = userBets.filter(b => b.is_correct === true).length
+      return { ...u, betCount: userBets.length, correctCount }
+    })
+
+    setUsers(usersWithStats)
     setLoading(false)
   }
 
@@ -54,7 +69,9 @@ function AdminUsers() {
           <thead>
             <tr style={{ backgroundColor: '#f3f4f6' }}>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>닉네임</th>
-              <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>보유 포인트</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #ccc' }}>보유 포인트</th>
+              <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ccc' }}>참여 퀴즈</th>
+              <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ccc' }}>정답</th>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>상태</th>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>가입일</th>
             </tr>
@@ -69,7 +86,14 @@ function AdminUsers() {
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
               >
                 <td style={{ padding: '12px' }}>{u.nickname}</td>
-                <td style={{ padding: '12px' }}>{u.points.toLocaleString()} P</td>
+                <td style={{ padding: '12px', textAlign: 'right' }}>{u.points.toLocaleString()} P</td>
+                <td style={{ padding: '12px', textAlign: 'center' }}>{u.betCount}건</td>
+                <td style={{ padding: '12px', textAlign: 'center' }}>
+                  {u.correctCount > 0
+                    ? <span style={{ color: '#16a34a', fontWeight: 'bold' }}>{u.correctCount}건</span>
+                    : <span style={{ color: '#999' }}>0건</span>
+                  }
+                </td>
                 <td style={{ padding: '12px' }}>
                   <span style={{
                     padding: '4px 10px',
