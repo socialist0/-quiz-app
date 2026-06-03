@@ -12,10 +12,29 @@ function AdminQuiz() {
   const [message, setMessage] = useState('')
   const [settling, setSettling] = useState(false)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchQuiz()
-  }, [])
+    async function init() {
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (!error) {
+        setQuiz(data)
+        setAnswer(data.answer || '')
+      }
+
+      const { data: betData } = await supabase
+        .from('bets')
+        .select('*, users(nickname, points)')
+        .eq('quiz_id', id)
+        .order('created_at', { ascending: true })
+      setBets(betData || [])
+
+      setLoading(false)
+    }
+    init()
+  }, [id])
 
   async function fetchQuiz() {
     const { data, error } = await supabase
@@ -34,11 +53,8 @@ function AdminQuiz() {
       .eq('quiz_id', id)
       .order('created_at', { ascending: true })
     setBets(betData || [])
-
-    setLoading(false)
   }
 
-  // 정산 핵심 로직 (with_answer / specific 공통 사용)
   async function runSettlement(currentAnswer) {
     const { data: latestBets } = await supabase
       .from('bets')
@@ -55,7 +71,6 @@ function AdminQuiz() {
       b => b.answer.trim() === currentAnswer.trim()
     )
 
-    // 각 배팅에 정답 여부 업데이트
     for (const bet of latestBets) {
       const isCorrect = correctBets.some(c => c.id === bet.id)
       await supabase
@@ -64,22 +79,16 @@ function AdminQuiz() {
         .eq('id', bet.id)
     }
 
-    if (correctBets.length === 0) {
-      // 정답자 없으면 포인트 환급 없음
-      return
-    }
+    if (correctBets.length === 0) return
 
-    // 정답자 균등 분배
     const payoutPerWinner = Math.floor(prizePool / correctBets.length)
 
     for (const bet of correctBets) {
-      // bets 테이블 payout 업데이트
       await supabase
         .from('bets')
         .update({ payout: payoutPerWinner })
         .eq('id', bet.id)
 
-      // 유저 포인트 지급
       const { data: userData } = await supabase
         .from('users')
         .select('points')
@@ -102,7 +111,6 @@ function AdminQuiz() {
     setSettling(true)
     setMessage('')
 
-    // 정답 저장
     const { error } = await supabase
       .from('quizzes')
       .update({ answer })
@@ -114,7 +122,6 @@ function AdminQuiz() {
       return
     }
 
-    // DB 저장 완료 후 약간 대기
     await new Promise(resolve => setTimeout(resolve, 500))
 
     if (quiz.settlement_type === 'with_answer') {
@@ -128,7 +135,6 @@ function AdminQuiz() {
     fetchQuiz()
   }
 
-  // specific 타입 수동 정산 버튼용
   async function handleManualSettle() {
     if (!quiz.answer || !quiz.answer.trim()) {
       setMessage('❌ 먼저 정답을 저장해주세요.')
@@ -238,7 +244,6 @@ function AdminQuiz() {
           <div style={valueStyle}>{new Date(quiz.answer_at).toLocaleString('ko-KR')}</div>
         </div>
 
-        {/* 정답 입력 */}
         <div>
           <label style={labelStyle}>정답 입력/수정</label>
           <input
@@ -266,7 +271,6 @@ function AdminQuiz() {
               {settling ? '처리 중...' : quiz.settlement_type === 'with_answer' ? '정답 저장 + 정산' : '정답 저장'}
             </button>
 
-            {/* specific 타입일 때 수동 정산 버튼 */}
             {quiz.settlement_type === 'specific' && quiz.answer && !alreadySettled && (
               <button
                 onClick={handleManualSettle}
@@ -293,7 +297,6 @@ function AdminQuiz() {
 
         {message && <p style={{ fontSize: '16px' }}>{message}</p>}
 
-        {/* 참여자 통계 */}
         <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', display: 'flex', gap: '32px', fontSize: '15px' }}>
           <span>참여자: <strong>{bets.length}명</strong></span>
           <span>정답자: <strong style={{ color: '#16a34a' }}>{correctCount}명</strong></span>
@@ -301,7 +304,6 @@ function AdminQuiz() {
           <span>총당첨: <strong>{totalPayout.toLocaleString()}P</strong></span>
         </div>
 
-        {/* 참여자 목록 */}
         <div>
           <h2 style={{ fontSize: '20px', marginBottom: '12px' }}>참여자 목록</h2>
           {bets.length === 0 ? (
@@ -355,7 +357,6 @@ function AdminQuiz() {
           )}
         </div>
 
-        {/* 퀴즈 삭제 */}
         <button
           onClick={handleDelete}
           style={{

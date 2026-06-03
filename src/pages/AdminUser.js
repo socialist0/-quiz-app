@@ -11,10 +11,26 @@ function AdminUser() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchUser()
-  }, [])
+    async function init() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (!error) setUser(data)
+
+      const { data: betData } = await supabase
+        .from('bets')
+        .select('*, quizzes(quiz_number, title)')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+      setBets(betData || [])
+
+      setLoading(false)
+    }
+    init()
+  }, [id])
 
   async function fetchUser() {
     const { data, error } = await supabase
@@ -24,15 +40,12 @@ function AdminUser() {
       .single()
     if (!error) setUser(data)
 
-    // 배팅 목록 + 퀴즈 제목 함께 가져오기
     const { data: betData } = await supabase
       .from('bets')
       .select('*, quizzes(quiz_number, title)')
       .eq('user_id', id)
       .order('created_at', { ascending: false })
     setBets(betData || [])
-
-    setLoading(false)
   }
 
   async function handleAddPoints() {
@@ -102,7 +115,6 @@ function AdminUser() {
 
   return (
     <div>
-      {/* 상단 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1 style={{ fontSize: '28px' }}>회원 상세</h1>
         <button onClick={() => navigate('/admin/users')} style={{ ...buttonStyle, backgroundColor: '#e5e7eb' }}>
@@ -110,7 +122,6 @@ function AdminUser() {
         </button>
       </div>
 
-      {/* 회원 정보 */}
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '30px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '16px' }}>
           <div><strong>닉네임:</strong> {user.nickname}</div>
@@ -134,7 +145,6 @@ function AdminUser() {
         </div>
       </div>
 
-      {/* 포인트 지급/차감 */}
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '30px', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>포인트 지급/차감</h2>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -155,11 +165,9 @@ function AdminUser() {
         {message && <p style={{ marginTop: '12px', fontSize: '16px' }}>{message}</p>}
       </div>
 
-      {/* 배팅 내역 */}
       <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '30px', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '20px', marginBottom: '8px' }}>퀴즈 참여 내역</h2>
 
-        {/* 요약 */}
         <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', fontSize: '14px', color: '#555' }}>
           <span>총 참여: <strong>{bets.length}건</strong></span>
           <span>총 배팅: <strong>{totalBet.toLocaleString()}P</strong></span>
@@ -211,7 +219,6 @@ function AdminUser() {
         )}
       </div>
 
-      {/* 회원 삭제 */}
       <button
         onClick={handleDelete}
         style={{ ...buttonStyle, backgroundColor: '#ef4444', color: 'white', padding: '14px 28px' }}
