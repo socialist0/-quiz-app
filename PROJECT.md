@@ -8,7 +8,7 @@
 - Frontend: React (create-react-app)
 - Database: Supabase (PostgreSQL)
 - Auth: Supabase Auth (이메일/비밀번호)
-- 배포 예정: Vercel + Supabase
+- 배포: Vercel + Supabase
 
 ## 로컬 개발 환경
 - 맥북 M5
@@ -17,11 +17,17 @@
 - 실행: cd ~/Documents/projects/quiz-app && npm start
 - 브라우저: localhost:3000
 
+## 배포
+- GitHub: https://github.com/socialist0/-quiz-app
+- Vercel: https://quiz-app-five-ochre.vercel.app
+- Vercel Node.js 버전: 20.x
+- Supabase Authentication → URL Configuration에 Vercel URL 및 localhost 허용 등록
+
 ## 페이지 구조
 - / → 유저 홈 (완성)
 - /quiz/:id → 퀴즈 참여 (완성)
-- /signup → 회원가입
-- /login → 로그인
+- /signup → 회원가입 (완성)
+- /login → 로그인 (완성)
 - /admin → 관리자 (AdminLayout 사이드바 포함)
 - /admin/quizzes → 퀴즈 목록 + 검색
 - /admin/new → 퀴즈 등록
@@ -36,7 +42,7 @@ src/
     Quiz.js → 퀴즈 참여 (완성)
     Signup.js → 회원가입 (완성)
     Login.js → 로그인 (완성)
-    AdminLayout.js → 관리자 공통 레이아웃 사이드바 (완성)
+    AdminLayout.js → 관리자 공통 레이아웃 사이드바 (완성) - role 기반 접근 제어
     Admin.js → 관리자 퀴즈 목록 (완성) - 참여자수/정답자수/누적배팅/총당첨 표시
     AdminNew.js → 퀴즈 등록 (완성)
     AdminQuiz.js → 퀴즈 상세 (완성) - 정답 입력/정산/참여자 목록
@@ -73,6 +79,7 @@ src/
 - nickname (TEXT UNIQUE)
 - email (TEXT)
 - points (INTEGER) → 보유 포인트
+- role (TEXT) → user/admin (기본값 user)
 - status (TEXT) → active/pending_delete
 - deleted_at (TIMESTAMP) → 탈퇴 신청 일시
 - created_at (TIMESTAMP)
@@ -110,11 +117,17 @@ src/
 - with_answer 타입: 관리자가 정답 저장 시 즉시 정산
 - specific 타입: pg_cron 자동 정산 또는 관리자 수동 정산 버튼
 
+## 관리자 인증
+- users 테이블에 role 컬럼 추가 (user/admin)
+- AdminLayout.js에서 세션 확인 + role 체크
+- role이 admin이 아니면 홈(/)으로 리다이렉트
+- 관리자 계정은 Supabase SQL Editor에서 직접 role 변경
+
 ## 완성된 기능
 - [x] Supabase 연결
 - [x] 회원가입 (이메일/비밀번호/닉네임)
 - [x] 로그인
-- [x] 관리자 레이아웃 (사이드바)
+- [x] 관리자 레이아웃 (사이드바) + role 기반 접근 제어
 - [x] 퀴즈 등록 (제목, 본문, 이미지, 배팅한도, 수수료, 날짜, 정산시기)
 - [x] 퀴즈 목록 + 검색 (번호/제목/본문) + 통계 (참여자수/정답자수/누적배팅/총당첨)
 - [x] 퀴즈 상세 보기 + 정답 입력/수정 + 정산 + 삭제
@@ -125,12 +138,13 @@ src/
 - [x] 퀴즈 참여 (배팅 + 주관식 답변, 중복 참여 방지)
 - [x] 퀴즈 status 자동 변경 (pg_cron)
 - [x] 정산 로직 (with_answer 즉시 / specific 자동+수동)
+- [x] 관리자 인증 (role 기반)
+- [x] Vercel 배포 (https://quiz-app-five-ochre.vercel.app)
 
 ## 미완성 기능 (다음 단계)
 - [ ] 관리자 - 회원 삭제시 Supabase Auth도 자동 삭제 (Edge Function)
 - [ ] 유저 - 마이페이지 (포인트, 참여 퀴즈 목록, 결과)
 - [ ] 유저 - 탈퇴 신청
-- [ ] 배포 (Vercel)
 
 ## 주의사항
 - 관리자 회원 삭제시 users 테이블 삭제 후 Supabase Auth에서도 수동 삭제 필요
@@ -138,3 +152,5 @@ src/
 - 만약 순서가 바뀌었으면 SQL Editor에서 수동 삭제
 - bets.is_correct 기본값은 NULL (false 아님) → 정산 전/후 구분용
 - pg_cron 시간은 UTC 기준이므로 쿼리에서 +9시간 처리 필요
+- Vercel 빌드 시 ESLint 경고가 에러로 처리됨 → useEffect에 eslint-disable 주석 대신 init 함수 패턴 사용
+- 로컬 개발 후 GitHub push하면 Vercel 자동 재배포됨
