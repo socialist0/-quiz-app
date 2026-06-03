@@ -12,6 +12,7 @@ function AdminQuiz() {
   const [message, setMessage] = useState('')
   const [settling, setSettling] = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchQuiz()
   }, [])
@@ -51,7 +52,7 @@ function AdminQuiz() {
     const prizePool = totalBetAmount - rake
 
     const correctBets = latestBets.filter(
-  b => b.answer.trim() === currentAnswer.trim()
+      b => b.answer.trim() === currentAnswer.trim()
     )
 
     // 각 배팅에 정답 여부 업데이트
@@ -113,11 +114,11 @@ function AdminQuiz() {
       return
     }
 
- // DB 저장 완료 후 약간 대기
-await new Promise(resolve => setTimeout(resolve, 500))
+    // DB 저장 완료 후 약간 대기
+    await new Promise(resolve => setTimeout(resolve, 500))
 
-if (quiz.settlement_type === 'with_answer') {
-  await runSettlement(answer)
+    if (quiz.settlement_type === 'with_answer') {
+      await runSettlement(answer)
       setMessage('✅ 정답 저장 및 정산 완료!')
     } else {
       setMessage('✅ 정답이 저장되었습니다! (정산은 예약된 시간에 자동 실행)')
