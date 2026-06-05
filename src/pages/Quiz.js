@@ -12,18 +12,17 @@ function Quiz() {
   const [answer, setAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [alreadyBet, setAlreadyBet] = useState(false)
+  const [existingBet, setExistingBet] = useState(null) // 기존 배팅 정보
+  const [editMode, setEditMode] = useState(false)      // 수정 모드
 
   useEffect(() => {
     const init = async () => {
-      // 로그인 확인
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         navigate('/login')
         return
       }
 
-      // 유저 정보
       const { data: userData } = await supabase
         .from('users')
         .select('*')
@@ -31,7 +30,6 @@ function Quiz() {
         .single()
       setUser(userData)
 
-      // 퀴즈 정보
       const { data: quizData } = await supabase
         .from('quizzes')
         .select('*')
@@ -39,14 +37,17 @@ function Quiz() {
         .single()
       setQuiz(quizData)
 
-      // 이미 배팅했는지 확인
       const { data: betData } = await supabase
         .from('bets')
         .select('*')
         .eq('quiz_id', id)
         .eq('user_id', session.user.id)
         .single()
-      if (betData) setAlreadyBet(true)
+      if (betData) {
+        setExistingBet(betData)
+        setBetAmount(String(betData.amount))
+        setAnswer(betData.answer)
+      }
 
       setLoading(false)
     }
@@ -59,44 +60,72 @@ function Quiz() {
 
     if (!amount || amount <= 0) return setError('배팅 포인트를 입력해주세요.')
     if (amount > quiz.max_bet) return setError(`최대 ${quiz.max_bet.toLocaleString()}P까지 배팅 가능해요.`)
-    if (amount > user.points) return setError('포인트가 부족해요.')
     if (!answer.trim()) return setError('답변을 입력해주세요.')
+
+    // 수정 시: 현재 보유 포인트 = 실제보유 + 기존배팅 (환불 개념)
+    const availablePoints = existingBet
+      ? user.points + existingBet.amount
+      : user.points
+    if (amount > availablePoints) return setError('포인트가 부족해요.')
 
     setSubmitting(true)
 
-    // 배팅 등록
-    const { error: betError } = await supabase
-      .from('bets')
-      .insert({
-        quiz_id: quiz.id,
-        user_id: user.id,
-        amount,
-        answer: answer.trim()
-      })
+    if (existingBet) {
+      // 배팅 수정
+      const { error: betError } = await supabase
+        .from('bets')
+        .update({ amount, answer: answer.trim() })
+        .eq('id', existingBet.id)
 
-    if (betError) {
-      setError('배팅 중 오류가 발생했어요.')
-      setSubmitting(false)
-      return
+      if (betError) {
+        setError('수정 중 오류가 발생했어요.')
+        setSubmitting(false)
+        return
+      }
+
+      // 포인트 차액 조정 (기존 배팅 환불 후 새 배팅 차감)
+      const pointDiff = existingBet.amount - amount
+      await supabase
+        .from('users')
+        .update({ points: user.points + pointDiff })
+        .eq('id', user.id)
+
+      setExistingBet({ ...existingBet, amount, answer: answer.trim() })
+      setEditMode(false)
+      setUser(prev => ({ ...prev, points: prev.points + pointDiff }))
+    } else {
+      // 신규 배팅
+      const { error: betError } = await supabase
+        .from('bets')
+        .insert({ quiz_id: quiz.id, user_id: user.id, amount, answer: answer.trim() })
+
+      if (betError) {
+        setError('배팅 중 오류가 발생했어요.')
+        setSubmitting(false)
+        return
+      }
+
+      await supabase
+        .from('users')
+        .update({ points: user.points - amount })
+        .eq('id', user.id)
+
+      navigate('/')
     }
 
-    // 포인트 차감
-    await supabase
-      .from('users')
-      .update({ points: user.points - amount })
-      .eq('id', user.id)
-
-    navigate('/')
+    setSubmitting(false)
   }
 
   if (loading) return <p>로딩 중...</p>
   if (!quiz) return <p>퀴즈를 찾을 수 없어요.</p>
 
+  const isOpen = quiz.status === 'open'
+
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
       {/* 뒤로가기 */}
-      <button onClick={() => navigate('/')} style={{ marginBottom: '16px', cursor: 'pointer' }}>
-        ← 홈으로
+      <button onClick={() => navigate(-1)} style={{ marginBottom: '16px', cursor: 'pointer' }}>
+        ← 뒤로가기
       </button>
 
       {/* 퀴즈 정보 */}
@@ -109,26 +138,64 @@ function Quiz() {
         )}
       </div>
 
-      {/* 마감일 */}
       <p style={{ color: '#999', fontSize: '13px' }}>
         마감: {new Date(quiz.end_at).toLocaleString('ko-KR')}
       </p>
 
-      {/* 이미 배팅한 경우 */}
-      {alreadyBet ? (
-        <div style={{ background: '#f0f0f0', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
-          <p style={{ margin: 0, color: '#555' }}>이미 배팅에 참여했어요!</p>
+      {/* 이미 배팅 + 수정 모드 아님 → 내 배팅 현황 표시 */}
+      {existingBet && !editMode ? (
+        <div style={{ background: '#f8f8f8', borderRadius: '8px', padding: '20px' }}>
+          <h4 style={{ margin: '0 0 12px', color: '#333' }}>내 배팅 현황</h4>
+          <p style={{ margin: '6px 0', color: '#555' }}>
+            배팅 포인트: <strong>{existingBet.amount.toLocaleString()}P</strong>
+          </p>
+          <p style={{ margin: '6px 0', color: '#555' }}>
+            제출한 답변: <strong>{existingBet.answer}</strong>
+          </p>
+          {existingBet.is_correct === true && (
+            <p style={{ margin: '10px 0 0', color: '#16a34a', fontWeight: 'bold' }}>
+              🎉 정답! +{existingBet.payout?.toLocaleString()}P 지급됨
+            </p>
+          )}
+          {existingBet.is_correct === false && (
+            <p style={{ margin: '10px 0 0', color: '#dc2626', fontWeight: 'bold' }}>
+              😢 오답
+            </p>
+          )}
+          {isOpen && (
+            <button
+              onClick={() => setEditMode(true)}
+              style={{
+                marginTop: '16px',
+                width: '100%',
+                padding: '10px',
+                background: '#4f46e5',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '15px',
+                cursor: 'pointer',
+              }}
+            >
+              ✏️ 배팅 수정하기
+            </button>
+          )}
         </div>
-      ) : quiz.status !== 'open' ? (
+      ) : quiz.status !== 'open' && !existingBet ? (
         <div style={{ background: '#f0f0f0', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
           <p style={{ margin: 0, color: '#555' }}>현재 참여할 수 없는 퀴즈예요.</p>
         </div>
       ) : (
         <div>
-          {/* 보유 포인트 */}
-          <p style={{ color: '#666' }}>보유 포인트: <strong>{user?.points?.toLocaleString()}P</strong></p>
+          <p style={{ color: '#666' }}>
+            보유 포인트: <strong>
+              {existingBet
+                ? (user.points + existingBet.amount).toLocaleString()
+                : user?.points?.toLocaleString()}P
+            </strong>
+            {existingBet && <span style={{ color: '#999', fontSize: '13px' }}> (기존 배팅 {existingBet.amount.toLocaleString()}P 포함)</span>}
+          </p>
 
-          {/* 배팅 포인트 입력 */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>
               배팅 포인트 (최대 {quiz.max_bet?.toLocaleString()}P)
@@ -144,7 +211,6 @@ function Quiz() {
             />
           </div>
 
-          {/* 답변 입력 */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>
               답변
@@ -158,17 +224,48 @@ function Quiz() {
             />
           </div>
 
-          {/* 에러 메시지 */}
           {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
 
-          {/* 제출 버튼 */}
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            style={{ width: '100%', padding: '12px', background: '#333', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}
-          >
-            {submitting ? '제출 중...' : '배팅하기'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {editMode && (
+              <button
+                onClick={() => {
+                  setEditMode(false)
+                  setBetAmount(String(existingBet.amount))
+                  setAnswer(existingBet.answer)
+                  setError('')
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#ccc',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  cursor: 'pointer',
+                }}
+              >
+                취소
+              </button>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{
+                flex: 2,
+                padding: '12px',
+                background: '#333',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+              }}
+            >
+              {submitting ? '처리 중...' : editMode ? '수정 완료' : '배팅하기'}
+            </button>
+          </div>
         </div>
       )}
     </div>
