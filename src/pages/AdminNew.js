@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -13,10 +13,12 @@ function AdminNew() {
   const [answerAt, setAnswerAt] = useState('')
   const [answer, setAnswer] = useState('')
   const [image, setImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const [settlementType, setSettlementType] = useState('with_answer')
   const [settlementAt, setSettlementAt] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const fileInputRef = useRef(null)
 
   const inputStyle = {
     display: 'block',
@@ -32,6 +34,19 @@ function AdminNew() {
   const labelStyle = {
     fontSize: '15px',
     fontWeight: 'bold',
+  }
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setImage(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const handleImageRemove = () => {
+    setImage(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleSubmit() {
@@ -107,11 +122,84 @@ function AdminNew() {
 
         <div>
           <label style={labelStyle}>이미지 업로드</label>
+
+          {/* 이미지 미리보기 */}
+          {imagePreview ? (
+            <div style={{ marginTop: '10px' }}>
+              <img
+                src={imagePreview}
+                alt="미리보기"
+                style={{
+                  width: '100%',
+                  maxHeight: '300px',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  backgroundColor: '#f9f9f9',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    backgroundColor: '#4f46e5',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🔄 이미지 교체
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImageRemove}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🗑️ 이미지 삭제
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                display: 'block',
+                width: '100%',
+                marginTop: '6px',
+                padding: '32px',
+                fontSize: '15px',
+                color: '#888',
+                backgroundColor: '#f9f9f9',
+                border: '2px dashed #ccc',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              📷 클릭하여 이미지 선택
+            </button>
+          )}
+
+          {/* 실제 파일 input (숨김) */}
           <input
-            style={{ ...inputStyle, padding: '8px' }}
+            ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={e => setImage(e.target.files[0])}
+            onChange={handleImageChange}
+            style={{ display: 'none' }}
           />
         </div>
 
