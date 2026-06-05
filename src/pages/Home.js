@@ -49,7 +49,7 @@ function Home() {
     }
   }
 
-  if (loading) return <p>로딩 중...</p>
+  if (loading) return null
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>

@@ -41,7 +41,7 @@ function MyPage() {
           navigate('/login')
      }
 
-     if (loading) return <p>로딩 중...</p>
+     if (loading) return null
 
      // 배팅을 3가지 상태로 분류
      const activeBets = bets.filter(b => b.quizzes?.status === 'open')

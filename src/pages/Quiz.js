@@ -116,8 +116,8 @@ function Quiz() {
     setSubmitting(false)
   }
 
-  if (loading) return <p>로딩 중...</p>
-  if (!quiz) return <p>퀴즈를 찾을 수 없어요.</p>
+  if (loading) return null
+  if (!quiz) return null
 
   const isOpen = quiz.status === 'open'
 
