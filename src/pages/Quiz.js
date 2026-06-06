@@ -12,8 +12,8 @@ function Quiz() {
   const [answer, setAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [existingBet, setExistingBet] = useState(null) // 기존 배팅 정보
-  const [editMode, setEditMode] = useState(false)      // 수정 모드
+  const [existingBet, setExistingBet] = useState(null)
+  const [editMode, setEditMode] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -62,7 +62,6 @@ function Quiz() {
     if (amount > quiz.max_bet) return setError(`최대 ${quiz.max_bet.toLocaleString()}P까지 배팅 가능해요.`)
     if (!answer.trim()) return setError('답변을 입력해주세요.')
 
-    // 수정 시: 현재 보유 포인트 = 실제보유 + 기존배팅 (환불 개념)
     const availablePoints = existingBet
       ? user.points + existingBet.amount
       : user.points
@@ -71,7 +70,6 @@ function Quiz() {
     setSubmitting(true)
 
     if (existingBet) {
-      // 배팅 수정
       const { error: betError } = await supabase
         .from('bets')
         .update({ amount, answer: answer.trim() })
@@ -83,7 +81,6 @@ function Quiz() {
         return
       }
 
-      // 포인트 차액 조정 (기존 배팅 환불 후 새 배팅 차감)
       const pointDiff = existingBet.amount - amount
       await supabase
         .from('users')
@@ -94,7 +91,6 @@ function Quiz() {
       setEditMode(false)
       setUser(prev => ({ ...prev, points: prev.points + pointDiff }))
     } else {
-      // 신규 배팅
       const { error: betError } = await supabase
         .from('bets')
         .insert({ quiz_id: quiz.id, user_id: user.id, amount, answer: answer.trim() })
@@ -120,6 +116,10 @@ function Quiz() {
   if (!quiz) return null
 
   const isOpen = quiz.status === 'open'
+  const formatNumber = (n) => String(n).padStart(6, '0')
+  const typeMap = { hour: 'H', day: 'D', week: 'W', month: 'M' }
+  const typeColors = { hour: '#fef3c7', day: '#dcfce7', week: '#dbeafe', month: '#f3e8ff' }
+  const typeTextColors = { hour: '#d97706', day: '#16a34a', week: '#1d4ed8', month: '#7c3aed' }
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
@@ -130,9 +130,23 @@ function Quiz() {
 
       {/* 퀴즈 정보 */}
       <div style={{ marginBottom: '24px' }}>
-        <span style={{ color: '#999', fontSize: '13px' }}>#{quiz.quiz_number}</span>
-        <h2 style={{ margin: '8px 0' }}>{quiz.title}</h2>
-        <p style={{ color: '#555' }}>{quiz.content}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span style={{ color: '#999', fontSize: '13px' }}>#{formatNumber(quiz.quiz_number)}</span>
+          {quiz.quiz_type && (
+            <span style={{
+              padding: '2px 8px',
+              borderRadius: '5px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              backgroundColor: typeColors[quiz.quiz_type] || '#f3f4f6',
+              color: typeTextColors[quiz.quiz_type] || '#555',
+            }}>
+              {typeMap[quiz.quiz_type] || quiz.quiz_type}
+            </span>
+          )}
+        </div>
+        <h2 style={{ margin: '0 0 8px' }}>{quiz.title}</h2>
+        <p style={{ color: '#555', margin: 0 }}>{quiz.content}</p>
         {quiz.image_url && (
           <img src={quiz.image_url} alt="퀴즈 이미지" style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }} />
         )}
@@ -142,7 +156,6 @@ function Quiz() {
         마감: {new Date(quiz.end_at).toLocaleString('ko-KR')}
       </p>
 
-      {/* 이미 배팅 + 수정 모드 아님 → 내 배팅 현황 표시 */}
       {existingBet && !editMode ? (
         <div style={{ background: '#f8f8f8', borderRadius: '8px', padding: '20px' }}>
           <h4 style={{ margin: '0 0 12px', color: '#333' }}>내 배팅 현황</h4>

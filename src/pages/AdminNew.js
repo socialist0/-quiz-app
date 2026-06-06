@@ -6,6 +6,7 @@ function AdminNew() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [quizType, setQuizType] = useState('day')
   const [maxBet, setMaxBet] = useState('')
   const [rakePercent, setRakePercent] = useState(10)
   const [startAt, setStartAt] = useState('')
@@ -72,6 +73,7 @@ function AdminNew() {
       const { error } = await supabase.from('quizzes').insert({
         title,
         content,
+        quiz_type: quizType,
         max_bet: parseInt(maxBet),
         rake_percent: parseInt(rakePercent),
         start_at: startAt,
@@ -91,6 +93,13 @@ function AdminNew() {
 
     setLoading(false)
   }
+
+  const typeOptions = [
+    { value: 'hour', label: 'H - Hour' },
+    { value: 'day', label: 'D - Day' },
+    { value: 'week', label: 'W - Week' },
+    { value: 'month', label: 'M - Month' },
+  ]
 
   return (
     <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
@@ -121,9 +130,44 @@ function AdminNew() {
         </div>
 
         <div>
+          <label style={labelStyle}>퀴즈 유형</label>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            {typeOptions.map(opt => (
+              <label
+                key={opt.value}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: `2px solid ${quizType === opt.value ? '#4f46e5' : '#e5e7eb'}`,
+                  backgroundColor: quizType === opt.value ? '#eef2ff' : 'white',
+                  cursor: 'pointer',
+                  fontSize: '15px',
+                  fontWeight: quizType === opt.value ? 'bold' : 'normal',
+                  color: quizType === opt.value ? '#4f46e5' : '#555',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <input
+                  type="radio"
+                  value={opt.value}
+                  checked={quizType === opt.value}
+                  onChange={e => setQuizType(e.target.value)}
+                  style={{ display: 'none' }}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <label style={labelStyle}>이미지 업로드</label>
 
-          {/* 이미지 미리보기 */}
           {imagePreview ? (
             <div style={{ marginTop: '10px' }}>
               <img
@@ -193,7 +237,6 @@ function AdminNew() {
             </button>
           )}
 
-          {/* 실제 파일 input (숨김) */}
           <input
             ref={fileInputRef}
             type="file"

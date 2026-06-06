@@ -21,12 +21,10 @@ function Admin() {
       .order('quiz_number', { ascending: false })
     if (error) { setLoading(false); return }
 
-    // 배팅 전체 가져오기
     const { data: betData } = await supabase
       .from('bets')
       .select('quiz_id, amount, is_correct, payout')
 
-    // 퀴즈별 통계 계산
     const quizzesWithStats = quizData.map(q => {
       const qBets = betData?.filter(b => b.quiz_id === q.id) || []
       const totalBet = qBets.reduce((sum, b) => sum + b.amount, 0)
@@ -44,6 +42,26 @@ function Admin() {
     q.content.includes(search) ||
     String(q.quiz_number).includes(search)
   )
+
+  const formatNumber = (n) => String(n).padStart(6, '0')
+
+  const typeLabel = (type) => {
+    const map = { hour: 'H', day: 'D', week: 'W', month: 'M' }
+    const colors = { hour: '#fef3c7', day: '#dcfce7', week: '#dbeafe', month: '#f3e8ff' }
+    const textColors = { hour: '#d97706', day: '#16a34a', week: '#1d4ed8', month: '#7c3aed' }
+    return (
+      <span style={{
+        padding: '3px 8px',
+        borderRadius: '6px',
+        fontSize: '13px',
+        fontWeight: 'bold',
+        backgroundColor: colors[type] || '#f3f4f6',
+        color: textColors[type] || '#555',
+      }}>
+        {map[type] || type}
+      </span>
+    )
+  }
 
   const statusLabel = (status) => {
     const map = { scheduled: '예정', open: '진행중', closed: '마감', answered: '정답공개' }
@@ -63,7 +81,7 @@ function Admin() {
   }
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1100px', margin: '0 auto' }}>
+    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: '28px' }}>관리자 페이지</h1>
         <button
@@ -99,15 +117,14 @@ function Admin() {
         onChange={e => setSearch(e.target.value)}
       />
 
-      {loading ? (
-        <p>불러오는 중...</p>
-      ) : filtered.length === 0 ? (
+      {loading ? null : filtered.length === 0 ? (
         <p>퀴즈가 없습니다.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f3f4f6' }}>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>번호</th>
+              <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ccc' }}>유형</th>
               <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>제목</th>
               <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #ccc' }}>상태</th>
               <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #ccc' }}>참여자</th>
@@ -126,7 +143,8 @@ function Admin() {
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
               >
-                <td style={{ padding: '12px' }}>#{q.quiz_number}</td>
+                <td style={{ padding: '12px', color: '#999', fontSize: '13px' }}>#{formatNumber(q.quiz_number)}</td>
+                <td style={{ padding: '12px', textAlign: 'center' }}>{typeLabel(q.quiz_type)}</td>
                 <td style={{ padding: '12px' }}>{q.title}</td>
                 <td style={{ padding: '12px', textAlign: 'center' }}>{statusLabel(q.status)}</td>
                 <td style={{ padding: '12px', textAlign: 'right' }}>{q.betCount}명</td>
@@ -136,8 +154,9 @@ function Admin() {
                     : <span style={{ color: '#999' }}>0명</span>
                   }
                 </td>
-<td style={{ padding: '12px', textAlign: 'right' }}>{(q.totalBet || 0).toLocaleString()}P</td>                <td style={{ padding: '12px', textAlign: 'right' }}>
-  {(q.totalPayout || 0) > 0 ? `${q.totalPayout.toLocaleString()}P` : '-'}
+                <td style={{ padding: '12px', textAlign: 'right' }}>{(q.totalBet || 0).toLocaleString()}P</td>
+                <td style={{ padding: '12px', textAlign: 'right' }}>
+                  {(q.totalPayout || 0) > 0 ? `${q.totalPayout.toLocaleString()}P` : '-'}
                 </td>
                 <td style={{ padding: '12px' }}>{new Date(q.end_at).toLocaleString('ko-KR')}</td>
               </tr>
