@@ -25,6 +25,7 @@ function Home() {
         .from('quizzes')
         .select('*')
         .eq('status', 'open')
+        .eq('is_hidden', false)
         .order('created_at', { ascending: false })
       setQuizzes(quizData || [])
 

@@ -139,13 +139,20 @@ function Admin() {
               <tr
                 key={q.id}
                 onClick={() => navigate(`/admin/quiz/${q.id}`)}
-                style={{ cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
+                style={{ cursor: 'pointer', borderBottom: '1px solid #eee', backgroundColor: q.is_hidden ? '#f3f4f6' : 'white', opacity: q.is_hidden ? 0.6 : 1 }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = q.is_hidden ? '#e5e7eb' : '#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = q.is_hidden ? '#f3f4f6' : 'white'}
               >
                 <td style={{ padding: '12px', color: '#999', fontSize: '13px' }}>#{formatNumber(q.quiz_number)}</td>
                 <td style={{ padding: '12px', textAlign: 'center' }}>{typeLabel(q.quiz_type)}</td>
-                <td style={{ padding: '12px' }}>{q.title}</td>
+                <td style={{ padding: '12px' }}>
+                  {q.title}
+                  {q.is_hidden && (
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: '#999', backgroundColor: '#e5e7eb', padding: '2px 6px', borderRadius: '4px' }}>
+                      비노출
+                    </span>
+                  )}
+                </td>
                 <td style={{ padding: '12px', textAlign: 'center' }}>{statusLabel(q.status)}</td>
                 <td style={{ padding: '12px', textAlign: 'right' }}>{q.betCount}명</td>
                 <td style={{ padding: '12px', textAlign: 'right' }}>

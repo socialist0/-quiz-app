@@ -151,17 +151,57 @@ function AdminQuiz() {
   }
 
   async function handleDelete() {
-    // bets 먼저 삭제 후 quiz 삭제 (FK 제약 때문)
-    if (!window.confirm('정말 삭제하시겠습니까?')) return
-    // bets 먼저 삭제
-    await supabase.from('bets').delete().eq('quiz_id', id)
-    const { error } = await supabase.from('quizzes').delete().eq('id', id)
-    if (!error) navigate('/admin')
-    else setMessage('❌ 오류: ' + error.message)
+    if (!window.confirm('이 퀴즈를 비노출 처리하시겠습니까?\n(실제 삭제되지 않고 서비스에서 숨겨집니다)')) return
+
+    // 정산 완료된 배팅이 있는 경우만 포인트 회수 여부 확인
+    const settledBets = bets.filter(b => b.is_correct !== null)
+    const winnerBets = settledBets.filter(b => b.is_correct === true && b.payout > 0)
+    let retrievePoints = false
+    if (winnerBets.length > 0) {
+      retrievePoints = window.confirm(
+        `당첨 포인트가 지급된 참여자가 ${winnerBets.length}명 있습니다.\n지급된 포인트를 회수하시겠습니까?`
+      )
+    }
+
+    try {
+      if (retrievePoints) {
+        for (const bet of winnerBets) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('points')
+            .eq('id', bet.user_id)
+            .single()
+          await supabase
+            .from('users')
+            .update({ points: Math.max(0, userData.points - bet.payout) })
+            .eq('id', bet.user_id)
+        }
+        await supabase
+          .from('bets')
+          .update({ point_retrieved: true })
+          .eq('quiz_id', id)
+          .eq('is_correct', true)
+      }
+
+      const { error } = await supabase
+        .from('quizzes')
+        .update({ is_hidden: true })
+        .eq('id', id)
+
+      if (error) throw error
+      navigate('/admin')
+    } catch (err) {
+      setMessage('❌ 오류: ' + err.message)
+    }
   }
 
-  if (loading) return <p>불러오는 중...</p>
-  if (!quiz) return <p>퀴즈를 찾을 수 없습니다.</p>
+  if (loading) return null
+  if (!quiz) return null
+
+  const formatNumber = (n) => String(n).padStart(6, '0')
+  const typeMap = { hour: 'H - Hour', day: 'D - Day', week: 'W - Week', month: 'M - Month' }
+  const typeColors = { hour: '#fef3c7', day: '#dcfce7', week: '#dbeafe', month: '#f3e8ff' }
+  const typeTextColors = { hour: '#d97706', day: '#16a34a', week: '#1d4ed8', month: '#7c3aed' }
 
   const labelStyle = { fontSize: '15px', fontWeight: 'bold' }
   const valueStyle = { fontSize: '16px', marginTop: '4px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '6px' }
@@ -184,7 +224,32 @@ function AdminQuiz() {
   return (
     <div style={{ padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '28px' }}>퀴즈 #{quiz.quiz_number}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 style={{ fontSize: '28px', margin: 0 }}>퀴즈 #{formatNumber(quiz.quiz_number)}</h1>
+          {quiz.quiz_type && (
+            <span style={{
+              padding: '4px 12px',
+              borderRadius: '8px',
+              fontSize: '15px',
+              fontWeight: 'bold',
+              backgroundColor: typeColors[quiz.quiz_type] || '#f3f4f6',
+              color: typeTextColors[quiz.quiz_type] || '#555',
+            }}>
+              {typeMap[quiz.quiz_type] || quiz.quiz_type}
+            </span>
+          )}
+          {quiz.is_hidden && (
+            <span style={{
+              padding: '4px 12px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: '#fee2e2',
+              color: '#dc2626',
+            }}>
+              비노출
+            </span>
+          )}
+        </div>
         <button
           onClick={() => navigate('/admin')}
           style={{ padding: '10px 20px', fontSize: '15px', borderRadius: '8px', border: '1px solid #ccc', cursor: 'pointer' }}
@@ -360,22 +425,24 @@ function AdminQuiz() {
           )}
         </div>
 
-        <button
-          onClick={handleDelete}
-          style={{
-            padding: '14px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            backgroundColor: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            marginTop: '20px',
-          }}
-        >
-          퀴즈 삭제
-        </button>
+        {!quiz.is_hidden && (
+          <button
+            onClick={handleDelete}
+            style={{
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              marginTop: '20px',
+            }}
+          >
+            비노출 처리
+          </button>
+        )}
 
       </div>
     </div>

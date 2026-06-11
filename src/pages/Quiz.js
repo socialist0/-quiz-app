@@ -113,7 +113,14 @@ function Quiz() {
   }
 
   if (loading) return null
-  if (!quiz) return null
+  if (!quiz || quiz.is_hidden) return (
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
+      <button onClick={() => navigate('/')} style={{ marginBottom: '16px', cursor: 'pointer' }}>
+        ← 홈으로
+      </button>
+      <p style={{ color: '#999' }}>존재하지 않는 퀴즈예요.</p>
+    </div>
+  )
 
   const isOpen = quiz.status === 'open'
   const formatNumber = (n) => String(n).padStart(6, '0')

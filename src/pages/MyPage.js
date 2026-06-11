@@ -42,9 +42,9 @@ function MyPage() {
 
      if (loading) return null
 
-     const activeBets = bets.filter(b => b.quizzes?.status === 'open')
-     const pendingBets = bets.filter(b => ['closed', 'scheduled'].includes(b.quizzes?.status))
-     const settledBets = bets.filter(b => b.quizzes?.status === 'answered')
+     const activeBets = bets.filter(b => b.quizzes?.status === 'open' && !b.quizzes?.is_hidden)
+     const pendingBets = bets.filter(b => ['closed', 'scheduled'].includes(b.quizzes?.status) && !b.quizzes?.is_hidden)
+     const settledBets = bets.filter(b => b.quizzes?.status === 'answered' && !b.quizzes?.is_hidden)
 
      const formatDate = (d) => new Date(d).toLocaleDateString('ko-KR', {
           year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
