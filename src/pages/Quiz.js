@@ -121,14 +121,15 @@ function Quiz() {
   const typeColors = { hour: '#fef3c7', day: '#dcfce7', week: '#dbeafe', month: '#f3e8ff' }
   const typeTextColors = { hour: '#d97706', day: '#16a34a', week: '#1d4ed8', month: '#7c3aed' }
 
+  // 정산 여부: is_correct 가 null이 아닌 bet이 하나라도 있으면 정산된 것
+  const isSettled = existingBet?.is_correct !== null && existingBet?.is_correct !== undefined
+
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
-      {/* 뒤로가기 */}
       <button onClick={() => navigate(-1)} style={{ marginBottom: '16px', cursor: 'pointer' }}>
         ← 뒤로가기
       </button>
 
-      {/* 퀴즈 정보 */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <span style={{ color: '#999', fontSize: '13px' }}>#{formatNumber(quiz.quiz_number)}</span>
@@ -165,16 +166,24 @@ function Quiz() {
           <p style={{ margin: '6px 0', color: '#555' }}>
             제출한 답변: <strong>{existingBet.answer}</strong>
           </p>
-          {existingBet.is_correct === true && (
-            <p style={{ margin: '10px 0 0', color: '#16a34a', fontWeight: 'bold' }}>
-              🎉 정답! +{existingBet.payout?.toLocaleString()}P 지급됨
+
+          {/* 정산 결과 표시 - is_correct가 null이면 대기 중 */}
+          {isSettled ? (
+            existingBet.is_correct === true ? (
+              <p style={{ margin: '10px 0 0', color: '#16a34a', fontWeight: 'bold' }}>
+                🎉 정답! +{existingBet.payout?.toLocaleString()}P 지급됨
+              </p>
+            ) : (
+              <p style={{ margin: '10px 0 0', color: '#dc2626', fontWeight: 'bold' }}>
+                😢 오답
+              </p>
+            )
+          ) : quiz.status === 'answered' ? (
+            <p style={{ margin: '10px 0 0', color: '#f59e0b', fontWeight: 'bold' }}>
+              ⏳ 정산 대기 중
             </p>
-          )}
-          {existingBet.is_correct === false && (
-            <p style={{ margin: '10px 0 0', color: '#dc2626', fontWeight: 'bold' }}>
-              😢 오답
-            </p>
-          )}
+          ) : null}
+
           {isOpen && (
             <button
               onClick={() => setEditMode(true)}

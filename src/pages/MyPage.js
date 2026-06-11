@@ -23,7 +23,6 @@ function MyPage() {
                     .single()
                setUser(userData)
 
-               // 내 배팅 + 퀴즈 정보 조인
                const { data: betData } = await supabase
                     .from('bets')
                     .select('*, quizzes(*)')
@@ -43,7 +42,6 @@ function MyPage() {
 
      if (loading) return null
 
-     // 배팅을 3가지 상태로 분류
      const activeBets = bets.filter(b => b.quizzes?.status === 'open')
      const pendingBets = bets.filter(b => ['closed', 'scheduled'].includes(b.quizzes?.status))
      const settledBets = bets.filter(b => b.quizzes?.status === 'answered')
@@ -54,8 +52,10 @@ function MyPage() {
 
      const BetCard = ({ bet }) => {
           const quiz = bet.quizzes
-          const isSettled = quiz?.status === 'answered'
           const isOpen = quiz?.status === 'open'
+          const isAnswered = quiz?.status === 'answered'
+          // is_correct가 null이 아닐 때만 정산 완료
+          const isSettled = bet.is_correct !== null && bet.is_correct !== undefined
 
           return (
                <div
@@ -80,16 +80,22 @@ function MyPage() {
                               <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#999' }}>
                                    참여: {formatDate(bet.created_at)}
                               </p>
-                              <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+                              <div style={{ display: 'flex', gap: '16px', fontSize: '14px', alignItems: 'center' }}>
                                    <span style={{ color: '#555' }}>
                                         배팅 <strong style={{ color: '#111' }}>{bet.amount?.toLocaleString()}P</strong>
                                    </span>
-                                   {isSettled && (
-                                        <span style={{ color: bet.is_correct ? '#16a34a' : '#dc2626' }}>
-                                             {bet.is_correct
-                                                  ? `🎉 +${bet.payout?.toLocaleString()}P`
-                                                  : '😢 낙첨'}
-                                        </span>
+                                   {isAnswered && (
+                                        isSettled ? (
+                                             <span style={{ color: bet.is_correct ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>
+                                                  {bet.is_correct
+                                                       ? `🎉 +${bet.payout?.toLocaleString()}P`
+                                                       : '😢 낙첨'}
+                                             </span>
+                                        ) : (
+                                             <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                                                  ⏳ 정산 대기 중
+                                             </span>
+                                        )
                                    )}
                               </div>
                               {isOpen && (
@@ -128,14 +134,14 @@ function MyPage() {
           </div>
      )
 
-     // 전체 수익 계산
-     const totalBet = settledBets.reduce((sum, b) => sum + b.amount, 0)
-     const totalPayout = settledBets.reduce((sum, b) => sum + (b.payout || 0), 0)
+     // 정산 완료된 것만 수익 계산 (is_correct가 null이 아닌 것)
+     const realSettledBets = settledBets.filter(b => b.is_correct !== null && b.is_correct !== undefined)
+     const totalBet = realSettledBets.reduce((sum, b) => sum + b.amount, 0)
+     const totalPayout = realSettledBets.reduce((sum, b) => sum + (b.payout || 0), 0)
      const totalProfit = totalPayout - totalBet
 
      return (
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
-               {/* 헤더 */}
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                     <Link to="/" style={{ fontSize: '14px', color: '#4f46e5', textDecoration: 'none' }}>
                          ← 홈으로
@@ -155,7 +161,6 @@ function MyPage() {
                     </button>
                </div>
 
-               {/* 유저 정보 카드 */}
                <div style={{
                     background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
                     borderRadius: '12px',
@@ -172,7 +177,7 @@ function MyPage() {
                                    {user?.points?.toLocaleString()}P
                               </p>
                          </div>
-                         {settledBets.length > 0 && (
+                         {realSettledBets.length > 0 && (
                               <div style={{ textAlign: 'right' }}>
                                    <p style={{ margin: '0 0 2px', fontSize: '12px', opacity: 0.8 }}>총 수익</p>
                                    <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: totalProfit >= 0 ? '#86efac' : '#fca5a5' }}>
@@ -183,7 +188,6 @@ function MyPage() {
                     </div>
                </div>
 
-               {/* 배팅 섹션 3개 */}
                <Section
                     title="진행 중인 퀴즈"
                     icon="📋"

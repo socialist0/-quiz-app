@@ -151,20 +151,17 @@ function AdminQuiz() {
   }
 
   async function handleDelete() {
+    // bets 먼저 삭제 후 quiz 삭제 (FK 제약 때문)
     if (!window.confirm('정말 삭제하시겠습니까?')) return
+    // bets 먼저 삭제
+    await supabase.from('bets').delete().eq('quiz_id', id)
     const { error } = await supabase.from('quizzes').delete().eq('id', id)
     if (!error) navigate('/admin')
     else setMessage('❌ 오류: ' + error.message)
   }
 
-  if (loading) return null
-  if (!quiz) return null
-
-  const formatNumber = (n) => String(n).padStart(6, '0')
-
-  const typeMap = { hour: 'H - Hour', day: 'D - Day', week: 'W - Week', month: 'M - Month' }
-  const typeColors = { hour: '#fef3c7', day: '#dcfce7', week: '#dbeafe', month: '#f3e8ff' }
-  const typeTextColors = { hour: '#d97706', day: '#16a34a', week: '#1d4ed8', month: '#7c3aed' }
+  if (loading) return <p>불러오는 중...</p>
+  if (!quiz) return <p>퀴즈를 찾을 수 없습니다.</p>
 
   const labelStyle = { fontSize: '15px', fontWeight: 'bold' }
   const valueStyle = { fontSize: '16px', marginTop: '4px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '6px' }
@@ -187,21 +184,7 @@ function AdminQuiz() {
   return (
     <div style={{ padding: '40px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h1 style={{ fontSize: '28px', margin: 0 }}>퀴즈 #{formatNumber(quiz.quiz_number)}</h1>
-          {quiz.quiz_type && (
-            <span style={{
-              padding: '4px 12px',
-              borderRadius: '8px',
-              fontSize: '15px',
-              fontWeight: 'bold',
-              backgroundColor: typeColors[quiz.quiz_type] || '#f3f4f6',
-              color: typeTextColors[quiz.quiz_type] || '#555',
-            }}>
-              {typeMap[quiz.quiz_type] || quiz.quiz_type}
-            </span>
-          )}
-        </div>
+        <h1 style={{ fontSize: '28px' }}>퀴즈 #{quiz.quiz_number}</h1>
         <button
           onClick={() => navigate('/admin')}
           style={{ padding: '10px 20px', fontSize: '15px', borderRadius: '8px', border: '1px solid #ccc', cursor: 'pointer' }}
