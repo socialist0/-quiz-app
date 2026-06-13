@@ -37,14 +37,23 @@ function Signup() {
       })
       if (error) throw error
 
+      // 가입 보너스 포인트 설정값 조회
+      const { data: bonusSetting } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'signup_bonus')
+        .single()
+      const signupBonus = parseInt(bonusSetting?.value || '0')
+
       const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
         nickname,
         email,
+        points: signupBonus,
       })
       if (profileError) throw profileError
 
-      setMessage('✅ 회원가입 완료!')
+      setMessage(`✅ 회원가입 완료! ${signupBonus.toLocaleString()}P가 지급되었어요.`)
       setTimeout(() => navigate('/'), 1500)
     } catch (err) {
       setMessage('❌ 오류: ' + err.message)
