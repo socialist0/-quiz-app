@@ -80,18 +80,22 @@ function AdminUser() {
     }
   }
 
-  async function handleDelete() {
-    if (!window.confirm('정말 이 회원을 삭제하시겠습니까?')) return
+  async function handleDeactivate() {
+    if (!window.confirm('이 회원을 비활성화하시겠습니까?\n(실제 삭제되지 않고 서비스에서 숨겨집니다)')) return
     const { error } = await supabase
       .from('users')
-      .delete()
+      .update({ status: 'inactive' })
       .eq('id', id)
-    if (!error) navigate('/admin/users')
-    else setMessage('❌ 오류: ' + error.message)
+    if (!error) {
+      setMessage('✅ 비활성화 완료!')
+      fetchUser()
+    } else {
+      setMessage('❌ 오류: ' + error.message)
+    }
   }
 
-  if (loading) return <p>불러오는 중...</p>
-  if (!user) return <p>회원을 찾을 수 없습니다.</p>
+  if (loading) return null
+  if (!user) return null
 
   const inputStyle = {
     padding: '10px',
@@ -108,6 +112,23 @@ function AdminUser() {
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer',
+  }
+
+  const statusBadge = (status) => {
+    const map = { active: '정상', inactive: '비활성화', pending_delete: '탈퇴신청' }
+    const bg = { active: '#dcfce7', inactive: '#f3f4f6', pending_delete: '#fee2e2' }
+    const color = { active: '#16a34a', inactive: '#999', pending_delete: '#dc2626' }
+    return (
+      <span style={{
+        padding: '4px 10px',
+        borderRadius: '20px',
+        fontSize: '13px',
+        backgroundColor: bg[status] || '#f3f4f6',
+        color: color[status] || '#999',
+      }}>
+        {map[status] || status}
+      </span>
+    )
   }
 
   const totalBet = bets.reduce((sum, b) => sum + b.amount, 0)
@@ -127,17 +148,7 @@ function AdminUser() {
           <div><strong>닉네임:</strong> {user.nickname}</div>
           <div><strong>이메일:</strong> {user.email}</div>
           <div><strong>보유 포인트:</strong> {user.points.toLocaleString()} P</div>
-          <div><strong>상태:</strong>{' '}
-            <span style={{
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '13px',
-              backgroundColor: user.status === 'active' ? '#dcfce7' : '#fee2e2',
-              color: user.status === 'active' ? '#16a34a' : '#dc2626',
-            }}>
-              {user.status === 'active' ? '정상' : '탈퇴신청'}
-            </span>
-          </div>
+          <div><strong>상태:</strong> {statusBadge(user.status)}</div>
           <div><strong>가입일:</strong> {new Date(user.created_at).toLocaleString('ko-KR')}</div>
           {user.deleted_at && (
             <div><strong>탈퇴신청일:</strong> {new Date(user.deleted_at).toLocaleString('ko-KR')}</div>
@@ -219,12 +230,14 @@ function AdminUser() {
         )}
       </div>
 
-      <button
-        onClick={handleDelete}
-        style={{ ...buttonStyle, backgroundColor: '#ef4444', color: 'white', padding: '14px 28px' }}
-      >
-        회원 삭제
-      </button>
+      {user.status !== 'inactive' && (
+        <button
+          onClick={handleDeactivate}
+          style={{ ...buttonStyle, backgroundColor: '#ef4444', color: 'white', padding: '14px 28px' }}
+        >
+          회원 비활성화
+        </button>
+      )}
     </div>
   )
 }

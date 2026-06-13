@@ -21,12 +21,10 @@ function AdminUsers() {
       .order('created_at', { ascending: false })
     if (error) { setLoading(false); return }
 
-    // 배팅 내역 전체 가져오기
     const { data: betData } = await supabase
       .from('bets')
       .select('user_id, is_correct')
 
-    // 유저별 참여 수 / 정답 수 계산
     const usersWithStats = userData.map(u => {
       const userBets = betData?.filter(b => b.user_id === u.id) || []
       const correctCount = userBets.filter(b => b.is_correct === true).length
@@ -40,6 +38,23 @@ function AdminUsers() {
   const filtered = users.filter(u =>
     u.nickname.includes(search)
   )
+
+  const statusBadge = (status) => {
+    const map = { active: '정상', inactive: '비활성화', pending_delete: '탈퇴신청' }
+    const bg = { active: '#dcfce7', inactive: '#f3f4f6', pending_delete: '#fee2e2' }
+    const color = { active: '#16a34a', inactive: '#999', pending_delete: '#dc2626' }
+    return (
+      <span style={{
+        padding: '4px 10px',
+        borderRadius: '20px',
+        fontSize: '13px',
+        backgroundColor: bg[status] || '#f3f4f6',
+        color: color[status] || '#999',
+      }}>
+        {map[status] || status}
+      </span>
+    )
+  }
 
   return (
     <div>
@@ -60,9 +75,7 @@ function AdminUsers() {
         onChange={e => setSearch(e.target.value)}
       />
 
-      {loading ? (
-        <p>불러오는 중...</p>
-      ) : filtered.length === 0 ? (
+      {loading ? null : filtered.length === 0 ? (
         <p>회원이 없습니다.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '16px', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
@@ -81,9 +94,14 @@ function AdminUsers() {
               <tr
                 key={u.id}
                 onClick={() => navigate(`/admin/user/${u.id}`)}
-                style={{ cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
+                style={{
+                  cursor: 'pointer',
+                  borderBottom: '1px solid #eee',
+                  backgroundColor: u.status === 'inactive' ? '#f9fafb' : 'white',
+                  opacity: u.status === 'inactive' ? 0.6 : 1,
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = u.status === 'inactive' ? '#f9fafb' : 'white'}
               >
                 <td style={{ padding: '12px' }}>{u.nickname}</td>
                 <td style={{ padding: '12px', textAlign: 'right' }}>{u.points.toLocaleString()} P</td>
@@ -94,17 +112,7 @@ function AdminUsers() {
                     : <span style={{ color: '#999' }}>0건</span>
                   }
                 </td>
-                <td style={{ padding: '12px' }}>
-                  <span style={{
-                    padding: '4px 10px',
-                    borderRadius: '20px',
-                    fontSize: '13px',
-                    backgroundColor: u.status === 'active' ? '#dcfce7' : '#fee2e2',
-                    color: u.status === 'active' ? '#16a34a' : '#dc2626',
-                  }}>
-                    {u.status === 'active' ? '정상' : '탈퇴신청'}
-                  </span>
-                </td>
+                <td style={{ padding: '12px' }}>{statusBadge(u.status)}</td>
                 <td style={{ padding: '12px' }}>{new Date(u.created_at).toLocaleString('ko-KR')}</td>
               </tr>
             ))}
